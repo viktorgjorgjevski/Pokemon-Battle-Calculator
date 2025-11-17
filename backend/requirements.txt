@@ -1,2 +1,4 @@
-fastapi
-uvicorn[standard]
+Flask
+gunicorn
+# optional but nice to have
+python-dotenv
