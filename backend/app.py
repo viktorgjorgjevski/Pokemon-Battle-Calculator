@@ -1,4 +1,5 @@
 from flask import Flask, render_template, request, jsonify
+from flask_cors import CORS
 import json
 import math
 # flask = web app class 
@@ -7,6 +8,7 @@ import math
 # jsonify = used for lists, maps. turn them into usable pieces for json apis
 
 app = Flask(__name__)
+CORS(app)
 
 TYPE_CHART = {
     'normal': {'rock': 0.5, 'ghost': 0, 'steel': 0.5},
@@ -30,7 +32,7 @@ TYPE_CHART = {
 }
 
 # How effective one attack is against another
-def get_type_effectivness(move_type, defender_type1, defender_type2=None): #some pokemon only have one typing
+def get_type_effectiveness(move_type, defender_type1, defender_type2=None): #some pokemon only have one typing
     """Calculate type effectivness multiplier"""
     #normal effectivness
     move_effectivness = 1.0
@@ -56,18 +58,21 @@ def damage_calc(attacker, defender, move, field_condition):
         attack = attacker['sp_atk']
         defense = defender['sp_def']
 
+    attack = max(1, attack)
+    defense = max(1, defense)
+
     modifiers = 1.0
 
-    base_damage = ((2 * level / 5 + 2) * power * attack / defense / 50 + 2) * modifiers
+    base_damage = (((2 * level / 5 + 2) * power * attack / defense) / 50 + 2) * modifiers
 
     # STAB (Same Type Attack Bonus)
     stab = 1.0
     if attacker['type1'] == move['type'] or move['type'] == attacker.get('type2'):
         stab = 1.5
-        if attacker.get('ability') == 'adaptability':
+        if attacker.get('ability', '').lower() == 'adaptability':
             stab = 2.0
     # Type effectivness
-    effectivness = get_type_effectivness(move['type'], defender['type1'], defender.get('type2')) # second type isn't always there. Some pokemon are MONO-type
+    effectivness = get_type_effectiveness(move['type'], defender['type1'], defender.get('type2')) # second type isn't always there. Some pokemon are MONO-type
 
     # Weather Modifiers
     weather_mod = 1.0
@@ -112,23 +117,23 @@ def damage_calc(attacker, defender, move, field_condition):
         'crit': crit_mod > 1.0
     }
 
-def calculate_speed_order(pokemon1, pokemon2, fc):
+def calculate_speed_order(p1, p2, fc):
     """Determining which pokemon moves first"""
-    speed1 = pokemon1['speed']
-    speed2 = pokemon2['speed']
+    speed1 = p1['speed']
+    speed2 = p2['speed']
 
     #tailwind
     if fc.get('tailwind'):
-        if fc['tailwind'] == 'p1':
-            speed1 *= 2
-        elif fc['tailwind'] == 'p2':
-            speed2 *= 2
+        if fc.get('tailwind') == 'p1':
+            s1 *= 2
+        elif fc.get('tailwind') == 'p2':
+            s2 *= 2
     
     # Trick Room reverses speed
     if fc.get('trick_room'):
-        return speed1 < speed2
+        return speed1 < speed2 # lower speed wins
     
-    return speed1 > speed2
+    return speed1 > speed2 # higher speed wins
 
 
 def simulate_battle(pokemon1, pokemon2, field_condition):
@@ -181,8 +186,8 @@ def simulate_battle(pokemon1, pokemon2, field_condition):
     'pokemon1_damage': damage_p1_to_p2,
     'pokemon2_damage': damage_p2_to_p1,
     'pokemon1_faster': which_faster,
-    'pokemon1_win_probability': round(p1_win_prob, 1),
-    'pokemon2_win_probability': round(100 - p1_win_prob, 1),
+    'pokemon1_win': round(p1_win_prob, 1),
+    'pokemon2_win': round(100 - p1_win_prob, 1),
     'pokemon1_ohko': p1_ohko,
     'pokemon2_ohko': p2_ohko
     }
@@ -197,11 +202,11 @@ def calculate():
 
     pokemon1 = data['pokemon1']
     pokemon2 = data['pokemon2']
-    field_condition = data.get('field_condition', {})
+    field_condition = data.get('fieldConditions', {})
 
     results = simulate_battle(pokemon1, pokemon2, field_condition)
 
     return jsonify(results)
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=True, port=5000)
