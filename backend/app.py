@@ -193,8 +193,8 @@ def simulate_battle(pokemon1, pokemon2, field_condition):
     }
 
 @app.route('/')
-def index():
-    return render_template('index.html')
+def home():
+    return "Pokemon Battle Calculator Backend Running"
 
 @app.route('/calculate', methods=['POST'])
 def calculate():
