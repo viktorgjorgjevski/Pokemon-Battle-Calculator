@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import './App.css';
+import { API_URL } from "./config";
 
 interface PokemonStats {
   level: number;
@@ -121,7 +122,7 @@ const App: React.FC = () => {
   const calculateBattle = async () => {
     setLoading(true);
     try {
-      const response = await fetch('http://127.0.0.1:5000/calculate', {
+      const response = await fetch(`${API_URL}/calculate`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
